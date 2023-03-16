@@ -41,7 +41,7 @@ app.get([ "/gdsearch", "/gdsdl" ], async (req, res) => {
 	}
 	const j = {};
 	for(const item of rj) {
-		j[item.title] = type == "movie" ? "http://database." + req.query.s + "/player.php?imdb=" + item.imdb : item.player_url.replaceAll("\\/", "/").replace(/{insert \d+ - \d+}$/, req.query.e || item.total_episode);
+		j[item.title] = type == "movie" ? "http://database." + req.query.s + "/player.php?imdb=" + item.imdb : item.player_url.replace(/\\\//g, "/").replace(/{insert \d+ - \d+}$/, req.query.e || item.total_episode);
 		if(req.url.startsWith("/gdsdl")) {
 			res.redirect("/gddl/" + j[item.title]);
 			return;
