@@ -5,6 +5,8 @@ const endpoints = {
 	"animeid.live": "Anime (Spanish)"
 };
 
+const gdEndpoint = "gdriveplayer.us";
+
 const endpointBox = document.getElementById("endpoint");
 const searchForm = document.getElementById("searchform");
 const searchBox = document.getElementById("search");
@@ -42,6 +44,11 @@ for (const endpoint in endpoints) {
 	endpointCards.appendChild(card);
 	endpointBox.add(new Option(endpoints[endpoint] + " (" + endpoint + ")", endpoint));
 }
+
+endpointBox.add(new Option("Movies (" + gdEndpoint + ")", "gd_movie"));
+endpointBox.add(new Option("Anime (" + gdEndpoint + ")", "gd_animes"));
+endpointBox.add(new Option("Drama (" + gdEndpoint + ")", "gd_drama"));
+endpointBox.add(new Option("Shows (" + gdEndpoint + ")", "gd_series"));
 
 endpointBox.selectedIndex = 0;
 
@@ -87,7 +94,11 @@ closeMediaBtn.onclick = function() {
 };
 
 searchForm.onsubmit = function() {
-	loadVidUrl("/sdl?s=" + encodeURIComponent(endpointBox.value) + "&q=" + encodeURIComponent(searchBox.value) + (episodeBox.value ? "&e=" + episodeBox.value : ""));
+	if(endpointBox.value.startsWith("gd_")) {
+		loadVidUrl("/gdsdl?s=" + encodeURIComponent(gdEndpoint) + "&t=" + encodeURIComponent(endpointBox.value.slice(3)) + "&q=" + encodeURIComponent(searchBox.value) + (episodeBox.value ? "&e=" + episodeBox.value : ""));
+	} else {
+		loadVidUrl("/sdl?s=" + encodeURIComponent(endpointBox.value) + "&q=" + encodeURIComponent(searchBox.value) + (episodeBox.value ? "&e=" + episodeBox.value : ""));
+	}
 	window.location.href = "#video";
 	return false;
 };
@@ -134,7 +145,7 @@ searchBox.oninput = function() {
 		return;
 	}
 	searchTimeout = setTimeout(function() {
-		fetch("/search?s=" + encodeURIComponent(endpointBox.value) + "&q=" + encodeURIComponent(lastSearch)).then(d => d.json()).then(j => {
+		fetch((endpointBox.value.startsWith("gd_") ? "/gdsearch?s=" + encodeURIComponent(gdEndpoint) + "&t=" + encodeURIComponent(endpointBox.value.slice(3)) : ("/search?s=" + encodeURIComponent(endpointBox.value))) + "&q=" + encodeURIComponent(lastSearch)).then(d => d.json()).then(j => {
 			searchSuggestBox.innerHTML = "";
 			if (Object.keys(j).length > 0) {
 				const h = document.createElement("h6");
@@ -152,7 +163,11 @@ searchBox.oninput = function() {
 				a.className = "dropdown-item";
 				a.innerText = t;
 				a.onclick = function() {
-					loadVidUrl("/dl/" + j[t] + (episodeBox.value ? "?e=" + episodeBox.value : ""));
+					if(endpointBox.value.startsWith("gd_")) {
+						loadVidUrl("/gddl/" + (episodeBox.value ? j[t].slice(0, j[t].lastIndexOf("episode=") + 8) + episodeBox.value : j[t]));
+					} else {
+						loadVidUrl("/dl/" + j[t] + (episodeBox.value ? "?e=" + episodeBox.value : ""));
+					}
 				};
 				searchSuggestBox.appendChild(a);
 			}

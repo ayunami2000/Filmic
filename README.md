@@ -13,7 +13,7 @@ The developers of Filmic are not responsible for any legal consequences that may
 #
 
 ## Try it out at [Filmic.app](https://filmic.app)
-### Or try it on [Glitch](https://filmic.glitch.me) or [Replit](https://filmic.ayunami2000.repl.co)
+### Or try it on [Glitch](https://filmic.glitch.me)
 
 #
 

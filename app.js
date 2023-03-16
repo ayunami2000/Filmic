@@ -17,6 +17,95 @@ function cors(url) {
 
 app.use("/", express.static("web"));
 
+app.get([ "/gdsearch", "/gdsdl" ], async (req, res) => {
+	if(!req.query.q || !req.query.t || !req.query.s) {
+		res.status(400);
+		res.send("400 invalid request");
+		return;
+	}
+	let type = req.query.t.toLowerCase();
+	if(type == "anime") {
+		type = "animes";
+	} else if(type == "movies") {
+		type = "movie";
+	} else if(type == "dramas") {
+		type = "drama";
+	} else if(type == "serie") {
+		type = "series";
+	}
+	const rj = (await got("https://api." + req.query.s + "/v1/" + type + "/search?title=" + encodeURIComponent(req.query.q), {}, gotOpts).json());
+	if(!rj) {
+		res.status(404);
+		res.send("404 not found");
+		return;
+	}
+	const j = {};
+	for(const item of rj) {
+		j[item.title] = type == "movie" ? "http://database." + req.query.s + "/player.php?imdb=" + item.imdb : item.player_url.replaceAll("\\/", "/").replace(/{insert \d+ - \d+}$/, req.query.e || item.total_episode);
+		if(req.url.startsWith("/gdsdl")) {
+			res.redirect("/gddl/" + j[item.title]);
+			return;
+		}
+	}
+	if(req.url.startsWith("/gdsdl")) {
+		res.status(404);
+		res.send("404 not found");
+		return;
+	}
+	res.status(200);
+	res.type("application/json");
+	res.send(JSON.stringify(j, null, "\t"));
+});
+
+app.get([ "/gddl/:prot\\://:url/player.php", "/gddl///:url/player.php", "/gddl/:url/player.php" ], async (req, res) => {
+	if(!req.params.url) {
+		res.status(400);
+		res.send("400 invalid request");
+		return;
+	}
+	const endpoint = ((req.params.prot || "https") + "://" + req.params.url).split("/", 3).join("/");
+	const t = await got(endpoint + "/player.php" + req.url.slice(req.url.indexOf("?")), {
+		headers: {
+			"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+			"accept-language": "en-US,en;q=0.9",
+			"cache-control": "no-cache",
+			"pragma": "no-cache",
+			"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+			"sec-ch-ua-mobile": "?0",
+			"sec-ch-ua-platform": "\"Windows\"",
+			"sec-fetch-dest": "document",
+			"sec-fetch-mode": "navigate",
+			"sec-fetch-site": "none",
+			"sec-fetch-user": "?1",
+			"upgrade-insecure-requests": "1"
+		}
+	}, gotOpts).text();
+	const parsed = h5p.parse(t, {
+		setAttributeMap: true
+	});
+	let theUrl = null;
+	h5p.walk(parsed, {
+		enter: (node, parent) => {
+			if(node.type != h5p.SyntaxKind.Tag) return;
+			if(node.name == "li" && Array.isArray(node.body) && node.body.length > 0 && node.body[0].type == h5p.SyntaxKind.Text && node.body[0].value == "Mirror Server" && parent.type == h5p.SyntaxKind.Tag && parent.name == "a" && "href" in parent.attributeMap) {
+				theUrl = parent.attributeMap.href.value.value;
+			}
+		}
+	});
+	if(theUrl == null) {
+		res.status(404);
+		res.send("404 not found");
+		return;
+	}
+	if(theUrl.startsWith("//")) {
+		theUrl = "https:" + theUrl;
+	}
+	if(theUrl.startsWith("https://vidstreaming.io")) {
+		theUrl = "https://anihdplay.com" + theUrl.slice(23);
+	}
+	res.redirect("/dl/" + theUrl);
+});
+
 app.get([ "/search", "/sdl" ], async (req, res) => {
 	if(!req.query.q || !req.query.s) {
 		res.status(400);
