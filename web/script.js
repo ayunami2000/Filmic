@@ -25,29 +25,34 @@ const useHls = !media.canPlayType("application/vnd.apple.mpegurl") && Hls.isSupp
 
 let hls = null;
 
-for (const endpoint in endpoints) {
+function addEndpointCard(eu, et) {
 	const card = document.createElement("div");
-	card.className = "card col";
+	card.className = "p-card col mx-auto";
 	const title = document.createElement("h2");
 	title.className = "card-title";
-	title.innerText = endpoints[endpoint];
+	title.innerText = et;
 	card.appendChild(title);
 	const span = document.createElement("span");
 	span.innerText = "Provided by ";
 	card.appendChild(span);
 	const link = document.createElement("a");
-	link.href = "https://" + endpoint;
+	link.href = "https://" + eu;
 	link.className = "hyperlink-underline font-weight-bold";
 	link.target = "_blank";
-	link.innerText = endpoint;
+	link.innerText = eu;
 	card.appendChild(link);
 	endpointCards.appendChild(card);
+}
+
+for (const endpoint in endpoints) {
+	addEndpointCard(endpoint, endpoints[endpoint]);
 	endpointBox.add(new Option(endpoints[endpoint] + " (" + endpoint + ")", endpoint));
 }
 
+addEndpointCard(gdEndpoint, "Extra Search API");
 endpointBox.add(new Option("Movies (" + gdEndpoint + ")", "gd_movie"));
 endpointBox.add(new Option("Anime (" + gdEndpoint + ")", "gd_animes"));
-endpointBox.add(new Option("Drama (" + gdEndpoint + ")", "gd_drama"));
+endpointBox.add(new Option("K-Drama (" + gdEndpoint + ")", "gd_drama"));
 endpointBox.add(new Option("Shows (" + gdEndpoint + ")", "gd_series"));
 
 endpointBox.selectedIndex = 0;

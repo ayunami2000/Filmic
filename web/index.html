@@ -16,6 +16,35 @@
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" />
 	</head>
 	<body class="with-custom-webkit-scrollbars with-custom-css-scrollbars" data-dm-shortcut-enabled="true" data-sidebar-shortcut-enabled="true" data-set-preferred-mode-onload="true">
+		<div class="modal" id="dmca" tabindex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<h5 class="modal-title">DMCA Information</h5>
+					<p>
+						This website cannot do anything except blacklist <u>our own</u> API endpoints from functioning.
+						<br />
+						<br />
+						The backend code does not even contain any references to the endpoint URLs, minus a single instance where it rewrites an old and outdated URL to the new one.
+						<br />
+						<br />
+						If you want to take down content, please send DMCA notices to the endpoint websites and/or the destination URL of the media.
+						<br />
+						<br />
+						If you still believe that this website is in violation of the DMCA, please contact us (me) on <a class="hyperlink-underline font-weight-bold" href="https://github.com/ayunami2000/Filmic" target="_blank">GitHub</a> by opening an issue or on Discord at <a class="hyperlink-underline font-weight-bold" href="https://discord.com/users/214118574485143553" target="_blank">ayunami2000#5250</a>.
+						<br />
+						<br />
+						This project was just made in my free time out of boredom, so I am fully ready to comply with any legal requests if they do arise.
+						<br />
+						<br />
+						Thank you!
+					</p>
+					<div class="text-right mt-20">
+						<a href="#" data-dismiss="modal" class="btn btn-primary" role="button">Got it!</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div class="modal modal-full" id="video" tabindex="-1" role="dialog" data-overlay-dismissal-disabled="true" data-esc-dismissal-disabled="true">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content w-full h-full text-center">
@@ -57,7 +86,7 @@
 						</details>
 					</p>
 					<div class="text-right mt-20">
-						<a href="https://github.com/ayunami2000/filmic" class="btn" role="button">Get me out of here!</a>
+						<a href="https://github.com/ayunami2000/Filmic" class="btn" role="button">Get me out of here!</a>
 						<a href="#" data-dismiss="modal" class="btn btn-primary" role="button">I understand and agree.</a>
 					</div>
 				</div>
@@ -122,7 +151,14 @@
 					Use the search box above to get started, or read below for endpoint and website information.
 				</div>
 				<div class="container-fluid">
-					<div class="row" id="endpointcards"></div>
+					<div class="card p-0">
+						<div class="px-card py-10 border-bottom">
+							<h2 class="card-title m-0">
+								Endpoints
+							</h2>
+						</div>
+						<div class="row mt-0" id="endpointcards"></div>
+					</div>
 				</div>
 
 				<div class="container-fluid">
@@ -133,7 +169,9 @@
 						<div class="col">
 							Made with<i class="fa fa-heart text-danger ml-5 mr-5" aria-hidden="true"></i>by <a class="hyperlink-underline font-weight-bold" href="https://github.com/ayunami2000" target="_blank">ayunami2000</a>
 							<br />
-							Filmic is an <a class="hyperlink-underline font-weight-bold" href="https://github.com/ayunami2000/filmic" target="_blank">open-source project</a>
+							Filmic is an <a class="hyperlink-underline font-weight-bold" href="https://github.com/ayunami2000/Filmic" target="_blank">open-source project</a>
+							<br />
+							<b>Click <a class="hyperlink-underline font-weight-bold" href="#dmca">here</a> for important DMCA information</b>
 						</div>
 						<div class="col">
 							Icons by <a class="hyperlink-underline font-weight-bold" href="https://fontawesome.com" target="_blank">Font Awesome</a>
