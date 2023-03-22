@@ -14,6 +14,17 @@
 
 		<link href="https://cdn.jsdelivr.net/npm/halfmoon@1.1.1/css/halfmoon-variables.min.css" rel="stylesheet" />
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" />
+
+		<style>
+			#episode::-webkit-outer-spin-button, #episode::-webkit-inner-spin-button {
+				-webkit-appearance: none;
+				margin: 0;
+			}
+			
+			#episode {
+				-moz-appearance: textfield;
+			}
+		</style>
 	</head>
 	<body class="with-custom-webkit-scrollbars with-custom-css-scrollbars" data-dm-shortcut-enabled="true" data-sidebar-shortcut-enabled="true" data-set-preferred-mode-onload="true">
 		<div class="modal" id="dmca" tabindex="-1" role="dialog">
@@ -51,8 +62,14 @@
 					<a href="#" class="close" role="button" aria-label="Close" id="closemedia">
 						<i class="fa fa-times" aria-hidden="true"></i>
 					</a>
-					<a href="about:blank" target="_blank" class="close left-auto" style="right: 1rem;" role="button" aria-label="Download" id="downmedia">
+					<a href="about:blank" class="close" style="left: 6rem;" role="button" aria-label="Download" id="downmedia">
 						<i class="fa fa-download" aria-hidden="true"></i>
+					</a>
+					<a href="#video" class="close left-auto" style="right: 6rem;" role="button" aria-label="Previous" id="prevmedia">
+						<i class="fa fa-arrow-left" aria-hidden="true"></i>
+					</a>
+					<a href="#video" class="close left-auto" style="right: 1rem;" role="button" aria-label="Next" id="nextmedia">
+						<i class="fa fa-arrow-right" aria-hidden="true"></i>
 					</a>
 					<video id="media" src="about:blank" class="w-full w-lg-three-quarters h-full h-lg-three-quarters rounded" controls="controls"></video>
 					<iframe id="backup" src="about:blank" class="d-none w-full w-lg-three-quarters h-full h-lg-three-quarters border-0 rounded" allowfullscreen="allowfullscreen"></iframe>
@@ -87,7 +104,7 @@
 					</p>
 					<div class="text-right mt-20">
 						<a href="https://github.com/ayunami2000/Filmic" class="btn" role="button">Get me out of here!</a>
-						<a href="#" data-dismiss="modal" class="btn btn-primary" role="button">I understand and agree.</a>
+						<a id="agree" href="#" data-dismiss="modal" class="btn btn-primary" role="button">I understand and agree.</a>
 					</div>
 				</div>
 			</div>
