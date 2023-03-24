@@ -23,18 +23,6 @@ function sanitize(text) {
 	return text.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "");
 }
 
-app.get("/robots.txt", async (req, res) => {
-	try {
-		res.status(200);
-		res.type("text/plain");
-		res.send("Sitemap: http" + (IS_HTTPS ? "s" : "") + "://" + req.headers.host + "/sitemap_membed1.com--recommended-series_anihdplay.com--popular_asianhdplay.pro--popular_animeid.live--popular_membed1.com_anihdplay.com_asianhdplay.pro_animeid.live.txt");
-	} catch(e) {
-		res.status(500);
-		res.type("text/plain");
-		res.send("500 internal server error");
-	}
-});
-
 app.get("/sitemap_*.txt", async (req, res) => {
 	try {
 		const urls = req.url.slice(9, -4).split("_");
