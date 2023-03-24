@@ -7,6 +7,7 @@ const app = express();
 const fs = require("fs");
 
 const PORT = process.env.PORT || 8080;
+const IS_HTTPS = process.env.IS_HTTPS || true;
 
 const gotOpts = new Options({
 	throwHttpErrors: false
@@ -21,6 +22,84 @@ function cors(url) {
 function sanitize(text) {
 	return text.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "");
 }
+
+app.get("/robots.txt", async (req, res) => {
+	try {
+		res.status(200);
+		res.type("text/plain");
+		res.send("Sitemap: http" + (IS_HTTPS ? "s" : "") + "://" + req.headers.host + "/sitemap_membed1.com--recommended-series_anihdplay.com--popular_asianhdplay.pro--popular_animeid.live--popular_membed1.com_anihdplay.com_asianhdplay.pro_animeid.live.txt");
+	} catch(e) {
+		res.status(500);
+		res.type("text/plain");
+		res.send("500 internal server error");
+	}
+});
+
+app.get("/sitemap_*.txt", async (req, res) => {
+	try {
+		const urls = req.url.slice(9, -4).split("_");
+		const sitemap = [];
+		for (let i = 0; i < urls.length; i++) {
+			const dashDashInd = urls[i].indexOf("--");
+			let baseUrl = dashDashInd == -1 ? urls[i] : urls[i].slice(0, dashDashInd);
+			let lowerBaseUrl = baseUrl.toLowerCase();
+			let tmp = lowerBaseUrl.startsWith("https://") || lowerBaseUrl.startsWith("http://");
+			if (tmp) {
+				tmp = 2;
+			} else if (lowerBaseUrl.startsWith("//")) {
+				baseUrl = "https:" + baseUrl;
+				tmp = -4;
+			} else if (lowerBaseUrl.startsWith("://")) {
+				baseUrl = "https" + baseUrl;
+				tmp = -3;
+			} else {
+				baseUrl = "https://" + baseUrl;
+				tmp = -6;
+			}
+			urls[i] = baseUrl + (dashDashInd == -1 ? "" : ("/" + urls[i].slice(baseUrl.length + tmp)));
+			const t = await got(urls[i], {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			const parsed = h5p.parse(t, {
+				setAttributeMap: true
+			});
+			h5p.walk(parsed, {
+				enter: (node, parent) => {
+					if (parent == null) return;
+					if (parent.type == h5p.SyntaxKind.Tag && parent.name == "ul" && "class" in parent.attributeMap && parent.attributeMap.class.value.value == "listing items" && node.type == h5p.SyntaxKind.Tag && node.name == "li" && Array.isArray(node.body)) {
+						h5p.walk(node.body, {
+							enter: node2 => {
+								if (node2.type == h5p.SyntaxKind.Tag && node2.name == "a" && "href" in node2.attributeMap) {
+									sitemap.push("http" + (IS_HTTPS ? "s" : "") + "://" + req.headers.host + "/watch?v=" + Buffer.from(baseUrl + node2.attributeMap.href.value.value).toString("base64"));
+								}
+							}
+						});
+					}
+				}
+			});
+		}
+		res.status(200);
+		res.type("text/plain");
+		res.send(sitemap.join("\n"));
+	} catch(e) {
+		res.status(500);
+		res.type("text/plain");
+		res.send("500 internal server error");
+	}
+});
 
 app.get("/watch.html", async (req, res) => {
 	try {
