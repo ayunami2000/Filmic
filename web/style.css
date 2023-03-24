@@ -1,0 +1,8 @@
+#episode::-webkit-outer-spin-button, #episode::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+#episode {
+	-moz-appearance: textfield;
+}

@@ -1,3 +1,12 @@
+try {
+	if (window.self != window.top) {
+		throw "";
+	}
+} catch (e) {
+	document.body.innerHTML = '<h4 class="text-center w-full">You cannot embed this page.</h4>';
+	throw "embed fail \uD83E\uDD13";
+}
+
 const endpoints = {
 	"membed1.com": "Movies and Shows",
 	"anihdplay.com": "Anime",
@@ -23,6 +32,7 @@ const endpointCards = document.getElementById("endpointcards");
 const agreeBtn = document.getElementById("agree");
 const prevMediaBtn = document.getElementById("prevmedia");
 const nextMediaBtn = document.getElementById("nextmedia");
+const embedMediaBtn = document.getElementById("embedmedia");
 
 const useHls = !media.canPlayType("application/vnd.apple.mpegurl") && Hls.isSupported();
 
@@ -212,6 +222,12 @@ function savePage(vidSrc) {
 function loadVidUrl(vidSrc) {
 	closeMediaBtn.onclick();
 	savePage(vidSrc);
+	if (vidSrc.startsWith("/dl/") || vidSrc.startsWith("/gddl/")) {
+		embedMediaBtn.href = "/watch?v=" + btoa(vidSrc.slice(vidSrc.indexOf("/", 1) + 1));
+		embedMediaBtn.classList.remove("d-none");
+	} else {
+		embedMediaBtn.classList.add("d-none");
+	}
 	backup.classList.add("d-none");
 	media.classList.remove("d-none");
 	if(useHls) {

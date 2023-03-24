@@ -5,15 +5,14 @@
 		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
 		<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />
 
-		<meta content="Filmic" property="og:title" />
-		<meta content="Search for media for free online, with no ads!" property="og:description" />
-		<meta content="https://filmic.app" property="og:url" />
+		<meta content="${TITLE} | Filmic" property="og:title" />
+		<meta content="Watch ${TITLE} for free online, with no ads!" property="og:description" />
+		<meta content="https://filmic.app/watch?v=${ID}" property="og:url" />
 
-		<title>Filmic</title>
+		<title>${TITLE} | Filmic</title>
 
 		<link href="https://cdn.jsdelivr.net/npm/halfmoon@1.1.1/css/halfmoon-variables.min.css" rel="stylesheet" />
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" />
-		<link rel="stylesheet" href="style.css" />
 	</head>
 	<body class="with-custom-webkit-scrollbars with-custom-css-scrollbars" data-dm-shortcut-enabled="true" data-sidebar-shortcut-enabled="true" data-set-preferred-mode-onload="true">
 		<div class="modal" id="dmca" tabindex="-1" role="dialog">
@@ -44,31 +43,7 @@
 				</div>
 			</div>
 		</div>
-
-		<div class="modal modal-full" id="video" tabindex="-1" role="dialog" data-overlay-dismissal-disabled="true" data-esc-dismissal-disabled="true">
-			<div class="modal-dialog" role="document">
-				<div class="modal-content w-full h-full text-center">
-					<a href="#" class="close" role="button" aria-label="Close" id="closemedia">
-						<i class="fa fa-times" aria-hidden="true"></i>
-					</a>
-					<a href="about:blank" target="_blank" class="close d-none" style="left: 11rem;" role="button" aria-label="Embed" id="embedmedia">
-						<i class="fa fa-code" aria-hidden="true"></i>
-					</a>
-					<a href="about:blank" target="_blank" class="close" style="left: 6rem;" role="button" aria-label="Download" id="downmedia">
-						<i class="fa fa-download" aria-hidden="true"></i>
-					</a>
-					<a href="#video" class="close left-auto" style="right: 6rem;" role="button" aria-label="Previous" id="prevmedia">
-						<i class="fa fa-arrow-left" aria-hidden="true"></i>
-					</a>
-					<a href="#video" class="close left-auto" style="right: 1rem;" role="button" aria-label="Next" id="nextmedia">
-						<i class="fa fa-arrow-right" aria-hidden="true"></i>
-					</a>
-					<video id="media" src="about:blank" class="w-full w-lg-three-quarters h-full h-lg-three-quarters" controls="controls"></video>
-					<iframe id="backup" src="about:blank" class="d-none w-full w-lg-three-quarters h-full h-lg-three-quarters border-0" allowfullscreen="allowfullscreen"></iframe>
-				</div>
-			</div>
-		</div>
-
+		
 		<div class="modal show" tabindex="-1" role="dialog" data-overlay-dismissal-disabled="true" data-esc-dismissal-disabled="true">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
@@ -102,74 +77,19 @@
 			</div>
 		</div>
 
-		<div class="page-wrapper with-navbar">
+		<div class="page-wrapper">
 			<div class="sticky-alerts"></div>
 
-			<nav class="navbar">
-				<a href="#" class="navbar-brand">
-					<i class="fa fa-film mr-5" aria-hidden="true"></i>Filmic
-				</a>
-				<form id="searchform" class="form-inline w-full">
-					<div class="input-group">
-						<div class="dropdown toggle-on-hover ml-auto w-half">
-							<input type="text" id="search" class="form-control" data-toggle="dropdown" placeholder="Search" required="required" autocomplete="off" />
-							<div class="dropdown-menu w-full">
-								<div class="input-group">
-									<input class="form-control w-100" id="episode" type="number" min="0" step="1" value="" placeholder="Episode" />
-									<div class="input-group-prepend">
-										<button class="btn w-50" type="button" id="prevepisode">
-											<i class="fa fa-minus" aria-hidden="true"></i>
-										</button>
-									</div>
-									<div class="input-group-append">
-										<button class="btn w-50" type="button" id="nextepisode">
-											<i class="fa fa-plus" aria-hidden="true"></i>
-										</button>
-									</div>
-								</div>
-								<div class="input-group">
-									<div class="input-group-prepend">
-										<span class="input-group-text">Endpoint</span>
-									</div>
-									<select class="form-control w-200" id="endpoint"></select>
-								</div>
-								<div id="searchsuggest" class="w-full"></div>
-							</div>
-						</div>
-						<div class="input-group-append">
-							<button class="btn" type="button" id="clearsearch">
-								<i class="fa fa-times" aria-hidden="true"></i>
-								<span class="sr-only">Clear</span>
-							</button>
-						</div>
-						<div class="input-group-append">
-							<button class="btn" type="submit">
-								<i class="fa fa-arrow-right" aria-hidden="true"></i>
-								<span class="sr-only">Search</span>
-							</button>
-						</div>
-					</div>
-				</form>
-			</nav>
-
 			<div class="content-wrapper text-center">
-				<div class="content">
-					<h1 class="content-title font-size-22">
-						Welcome to Filmic!
-					</h1>
-					Use the search box above to get started, or read below for endpoint and website information.
-				</div>
-				<div class="container-fluid">
-					<div class="card p-0">
-						<div class="px-card py-10 border-bottom">
-							<h2 class="card-title m-0">
-								Endpoints
-							</h2>
-						</div>
-						<div class="row mt-0" id="endpointcards"></div>
-					</div>
-				</div>
-
+				<video id="media" src="${URL}" class="w-full h-full" controls="controls"></video>
+				<iframe id="backup" src="about:blank" class="d-none w-full h-full border-0" allowfullscreen="allowfullscreen"></iframe>
+				<br />
+				<br />
+				<a href="${URL}" target="_blank" class="hyperlink font-weight-bold" aria-label="Download">
+					<i class="fa fa-download" aria-hidden="true"></i> Download
+				</a>
+				<br />
+				<br />
 				<div class="container-fluid">
 					<div class="row text-muted">
 						<div class="col">
@@ -194,6 +114,27 @@
 
 		<script src="https://cdn.jsdelivr.net/npm/halfmoon@1.1.1/js/halfmoon.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/hls.js"></script>
-		<script src="script.js"></script>
+		<script>
+			const media = document.getElementById("media");
+			const backup = document.getElementById("backup");
+
+			const vidSrc = media.src;
+
+			if(!media.canPlayType("application/vnd.apple.mpegurl") && Hls.isSupported()) {
+				media.onerror = function() {
+					media.onerror = function() {};
+					const hls = new Hls();
+					hls.on(Hls.Events.ERROR, function(event, data) {
+						if (data.fatal) {
+							media.classList.add("d-none");
+							backup.classList.remove("d-none");
+							backup.src = vidSrc;
+						}
+					});
+					hls.loadSource(vidSrc);
+					hls.attachMedia(media);
+				};
+			}
+		</script>
 	</body>
 </html>
