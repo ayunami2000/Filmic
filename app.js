@@ -5,6 +5,19 @@ const h5p = require("html5parser");
 const express = require("express");
 const app = express();
 const fs = require("fs");
+const NodeCache = require("node-cache");
+const infoCache = new NodeCache({
+	stdTTL: 1200,
+	checkperiod: 600,
+	useClones: false,
+	maxKeys: 512
+});
+const dlCache = new NodeCache({
+	stdTTL: 300,
+	checkperiod: 150,
+	useClones: false,
+	maxKeys: 4096
+});
 
 const PORT = process.env.PORT || 8080;
 const IS_HTTPS = process.env.IS_HTTPS || true;
@@ -25,6 +38,24 @@ function sanitize(text) {
 
 app.get("/sitemap_*.txt", async (req, res) => {
 	try {
+		let robotsSitemap = await got("http://localhost:" + PORT + "/robots.txt", {}, gotOpts).text();
+		let ind = robotsSitemap.indexOf("Sitemap: ");
+		if (ind != -1) {
+			ind += 9;
+			const ind2 = robotsSitemap.indexOf("\n", ind);
+			robotsSitemap = robotsSitemap.slice(ind, ind2 == -1 ? undefined : ind2);
+			if (!robotsSitemap.endsWith(req.url)) {
+				res.redirect(307, "/");
+				return;
+			}
+		}
+		let cacheVal = infoCache.get("sitemap://");
+		if (cacheVal) {
+			res.status(200);
+			res.type("text/plain");
+			res.send(cacheVal);
+			return;
+		}
 		const urls = req.url.slice(9, -4).split("_");
 		const sitemap = [];
 		for (let i = 0; i < urls.length; i++) {
@@ -79,9 +110,11 @@ app.get("/sitemap_*.txt", async (req, res) => {
 				}
 			});
 		}
+		cacheVal = sitemap.join("\n");
+		infoCache.set("sitemap://", cacheVal);
 		res.status(200);
 		res.type("text/plain");
-		res.send(sitemap.join("\n"));
+		res.send(cacheVal);
 	} catch(e) {
 		res.status(500);
 		res.type("text/plain");
@@ -89,7 +122,7 @@ app.get("/sitemap_*.txt", async (req, res) => {
 	}
 });
 
-app.get("/watch.html", async (req, res) => {
+app.get([ "/watch.html", "/index.html" ], async (req, res) => {
 	try {
 		res.redirect(307, "/");
 	} catch(e) {
@@ -100,6 +133,86 @@ app.get("/watch.html", async (req, res) => {
 });
 
 const watchPage = fs.readFileSync("web/watch.html", "utf-8");
+const indexPage = fs.readFileSync("web/index.html", "utf-8");
+
+app.get("/", async (req, res) => {
+	try {
+		let sitemap = await got("http://localhost:" + PORT + "/robots.txt", {}, gotOpts).text();
+		let ind = sitemap.indexOf("Sitemap: ");
+		if (ind == -1) {
+			res.status(200);
+			res.type("text/html");
+			res.send(indexPage.replace(/\${LATEST}/gi, ""));
+			return;
+		}
+		ind += 9;
+		const ind2 = sitemap.indexOf("\n", ind);
+		sitemap = sitemap.slice(ind, ind2 == -1 ? undefined : ind2);
+		ind = sitemap.indexOf("//");
+		if (ind == -1) {
+			ind = sitemap.indexOf("/");
+		} else {
+			ind = sitemap.indexOf("/", ind + 2);
+		}
+		if (ind == -1) {
+			res.status(200);
+			res.type("text/html");
+			res.send(indexPage.replace(/\${LATEST}/gi, ""));
+			return;
+		}
+		sitemap = sitemap.slice(ind);
+		sitemap = await got("http://localhost:" + PORT + sitemap, {}, gotOpts).text();
+		const lines = sitemap.split("\n");
+		let latest = "";
+		const seenLines = [];
+		for (let i = 0; i < Math.min(lines.length, 9); i++) {
+			let lineInd = -1;
+			while (lineInd == -1 || seenLines.includes(lineInd)) {
+				lineInd = Math.floor(Math.random() * lines.length);
+			}
+			let line = lines[lineInd];
+			ind = line.indexOf("//");
+			if (ind == -1) {
+				ind = line.indexOf("/");
+			} else {
+				ind = line.indexOf("/", ind + 2);
+			}
+			if (ind == -1) {
+				continue;
+			}
+			line = line.slice(ind);
+			const t = await got("http://localhost:" + PORT + line, {}, gotOpts).text();
+			const parsed = h5p.parse(t, {
+				setAttributeMap: true
+			});
+			let title = null;
+			h5p.walk(parsed, {
+				enter: node => {
+					if (title != null) return;
+					if (node.type != h5p.SyntaxKind.Tag) return;
+					if (node.name == "title" && Array.isArray(node.body) && node.body.length > 0 && node.body[0].type == h5p.SyntaxKind.Text) {
+						title = node.body[0].value;
+						const pInd = title.lastIndexOf(" | ");
+						if (pInd != -1) {
+							title = title.slice(0, pInd);
+						}
+					}
+				}
+			});
+			if (title == null) {
+				continue;
+			}
+			latest += `<div class="p-card col-4 mx-auto"><a href="${line}" class="hyperlink font-weight-bold"><h2 class="card-title">${title}</h2></a>Watch ${title} for free online, with no ads!</div>`;
+		}
+		res.status(200);
+		res.type("text/html");
+		res.send(indexPage.replace(/\${LATEST}/gi, latest));
+	} catch(e) {
+		res.status(200);
+		res.type("text/html");
+		res.send(indexPage.replace(/\${LATEST}/gi, ""));
+	}
+});
 
 app.use("/", express.static("web"));
 
@@ -124,22 +237,33 @@ app.get("/watch", async (req, res) => {
 		}
 		const gd = url.includes("/player.php?");
 		const streaming = url.includes("/streaming.php?");
-		const t = await got(url, {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "no-cache",
-				"pragma": "no-cache",
-				"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1"
-			}
-		}, gotOpts).text();
+		let cacheVal = infoCache.get(url);
+		if (cacheVal) {
+			res.status(200);
+			res.type("text/html");
+			res.send(watchPage.replace(/\${TITLE}/gi, cacheVal[0]).replace(/\${ID}/gi, cacheVal[1]).replace(/\${URL}/gi, cacheVal[2]));
+			return;
+		}
+		let t = dlCache.get(url);
+		if (!t) {
+			t = await got(url, {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			dlCache.set(url, t);
+		}
 		const parsed = h5p.parse(t, {
 			setAttributeMap: true
 		});
@@ -173,9 +297,15 @@ app.get("/watch", async (req, res) => {
 		if (eInd != -1) {
 			title += " Episode " + url.slice(eInd + 3).replace(/[^\d]+/g, "");
 		}
+		cacheVal = [
+			sanitize(title),
+			sanitize(req.query.v),
+			sanitize("/" + (gd ? "gd" : "") + "dl/" + url)
+		];
+		infoCache.set(url, cacheVal);
 		res.status(200);
 		res.type("text/html");
-		res.send(watchPage.replace(/\${TITLE}/gi, sanitize(title)).replace(/\${ID}/gi, sanitize(req.query.v)).replace(/\${URL}/gi, sanitize("/" + (gd ? "gd" : "") + "dl/" + url)));
+		res.send(watchPage.replace(/\${TITLE}/gi, cacheVal[0]).replace(/\${ID}/gi, cacheVal[1]).replace(/\${URL}/gi, cacheVal[2]));
 	} catch(e) {
 		res.status(500);
 		res.type("text/plain");
@@ -241,22 +371,27 @@ app.get([ "/gddl/:prot\\://:url/player.php", "/gddl///:url/player.php", "/gddl/:
 			return;
 		}
 		const endpoint = ((req.params.prot || "https") + "://" + req.params.url).split("/", 3).join("/");
-		const t = await got(endpoint + "/player.php" + req.url.slice(req.url.indexOf("?")), {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "no-cache",
-				"pragma": "no-cache",
-				"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1"
-			}
-		}, gotOpts).text();
+		const yurr = endpoint + "/player.php" + req.url.slice(req.url.indexOf("?"));
+		let t = dlCache.get(yurr);
+		if (!t) {
+			t = await got(yurr, {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			dlCache.set(yurr, t);
+		}
 		const parsed = h5p.parse(t, {
 			setAttributeMap: true
 		});
@@ -381,22 +516,26 @@ app.get([ "/dl/:prot\\://:url/:path/:name", "/dl///:url/:path/:name", "/dl/:url/
 		}
 		const fardUrl = endpoint + "/" + req.params.path + "/" + req.params.name;
 		if (req.query.e && !isNaN(+req.query.e)) {
-			const ep = await got(fardUrl, {
-				headers: {
-					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-					"accept-language": "en-US,en;q=0.9",
-					"cache-control": "no-cache",
-					"pragma": "no-cache",
-					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-					"sec-ch-ua-mobile": "?0",
-					"sec-ch-ua-platform": "\"Windows\"",
-					"sec-fetch-dest": "document",
-					"sec-fetch-mode": "navigate",
-					"sec-fetch-site": "none",
-					"sec-fetch-user": "?1",
-					"upgrade-insecure-requests": "1"
-				}
-			}, gotOpts).text();
+			let ep = dlCache.get(fardUrl);
+			if (!ep) {
+				ep = await got(fardUrl, {
+					headers: {
+						"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+						"accept-language": "en-US,en;q=0.9",
+						"cache-control": "no-cache",
+						"pragma": "no-cache",
+						"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+						"sec-ch-ua-mobile": "?0",
+						"sec-ch-ua-platform": "\"Windows\"",
+						"sec-fetch-dest": "document",
+						"sec-fetch-mode": "navigate",
+						"sec-fetch-site": "none",
+						"sec-fetch-user": "?1",
+						"upgrade-insecure-requests": "1"
+					}
+				}, gotOpts).text();
+				dlCache.set(fardUrl, ep);
+			}
 			const epp = h5p.parse(ep, {
 				setAttributeMap: true
 			});
@@ -420,22 +559,26 @@ app.get([ "/dl/:prot\\://:url/:path/:name", "/dl///:url/:path/:name", "/dl/:url/
 				return;
 			}
 		}
-		const t = await got(fardUrl, {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "no-cache",
-				"pragma": "no-cache",
-				"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1"
-			}
-		}, gotOpts).text();
+		let t = dlCache.get(fardUrl);
+		if (!t) {
+			t = await got(fardUrl, {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			dlCache.set(fardUrl, t);
+		}
 		if (t.startsWith("404")) {
 			res.status(404);
 			res.type("text/plain");
@@ -484,22 +627,26 @@ app.get([ "/dl/:prot\\://:url/streaming.php", "/dl///:url/streaming.php", "/dl/:
 			res.send("400 invalid request");
 			return;
 		}
-		const t = await got(endpoint + "/streaming.php?id=" + req.query.id, {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "no-cache",
-				"pragma": "no-cache",
-				"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1"
-			}
-		}, gotOpts).text();
+		let t = dlCache.get(endpoint + "/streaming.php?id=" + req.query.id);
+		if (!t) {
+			t = await got(endpoint + "/streaming.php?id=" + req.query.id, {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			dlCache.set(endpoint + "/streaming.php?id=" + req.query.id, t);
+		}
 		if (t.startsWith("SQLSTATE")) {
 			res.status(404);
 			res.type("text/plain");
@@ -581,22 +728,26 @@ app.get([ "/dl/:prot\\://:url/streaming.php", "/dl///:url/streaming.php", "/dl/:
 			}
 			return;
 		}
-		const scr = await got(playerUrl, {
-			headers: {
-				"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-				"accept-language": "en-US,en;q=0.9",
-				"cache-control": "no-cache",
-				"pragma": "no-cache",
-				"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
-				"sec-ch-ua-mobile": "?0",
-				"sec-ch-ua-platform": "\"Windows\"",
-				"sec-fetch-dest": "document",
-				"sec-fetch-mode": "navigate",
-				"sec-fetch-site": "none",
-				"sec-fetch-user": "?1",
-				"upgrade-insecure-requests": "1"
-			}
-		}, gotOpts).text();
+		let scr = dlCache.get(playerUrl);
+		if (!scr) {
+			scr = await got(playerUrl, {
+				headers: {
+					"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+					"accept-language": "en-US,en;q=0.9",
+					"cache-control": "no-cache",
+					"pragma": "no-cache",
+					"sec-ch-ua": "\"Chromium\";v=\"110\", \"Not A(Brand\";v=\"24\", \"Google Chrome\";v=\"110\"",
+					"sec-ch-ua-mobile": "?0",
+					"sec-ch-ua-platform": "\"Windows\"",
+					"sec-fetch-dest": "document",
+					"sec-fetch-mode": "navigate",
+					"sec-fetch-site": "none",
+					"sec-fetch-user": "?1",
+					"upgrade-insecure-requests": "1"
+				}
+			}, gotOpts).text();
+			dlCache.set(playerUrl, scr);
+		}
 		var doneYet = false;
 		const o = function(ae) {
 			o.getJSON = function(u, c) {

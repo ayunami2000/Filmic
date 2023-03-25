@@ -4,9 +4,10 @@
 		"start": "node app.js"
 	},
 	"dependencies": {
+		"crypto-js": "^4.1.1",
 		"express": "^4.18.2",
 		"got-cjs": "^12.5.4",
-		"crypto-js": "^4.1.1",
-		"html5parser": "^2.0.2"
+		"html5parser": "^2.0.2",
+		"node-cache": "^5.1.2"
 	}
 }
