@@ -21,6 +21,7 @@ const dlCache = new NodeCache({
 
 const PORT = process.env.PORT || 8080;
 const IS_HTTPS = process.env.IS_HTTPS || true;
+const FORCE_HOST = process.env.FORCE_HOST || false;
 
 const gotOpts = new Options({
 	throwHttpErrors: false
@@ -38,7 +39,17 @@ function sanitize(text) {
 
 app.get("/sitemap_*.txt", async (req, res) => {
 	try {
-		let robotsSitemap = await got("http://localhost:" + PORT + "/robots.txt", {}, gotOpts).text();
+		if (FORCE_HOST && req.headers.host != FORCE_HOST) {
+			res.status(403);
+			res.type("text/plain");
+			res.send("403 forbidden");
+			return;
+		}
+		let robotsSitemap = await got("http://localhost:" + PORT + "/robots.txt", {
+			headers: {
+				host: req.headers.host
+			}
+		}, gotOpts).text();
 		let ind = robotsSitemap.indexOf("Sitemap: ");
 		if (ind != -1) {
 			ind += 9;
@@ -137,7 +148,17 @@ const indexPage = fs.readFileSync("web/index.html", "utf-8");
 
 app.get("/", async (req, res) => {
 	try {
-		let sitemap = await got("http://localhost:" + PORT + "/robots.txt", {}, gotOpts).text();
+		if (FORCE_HOST && req.headers.host != FORCE_HOST) {
+			res.status(403);
+			res.type("text/plain");
+			res.send("403 forbidden");
+			return;
+		}
+		let sitemap = await got("http://localhost:" + PORT + "/robots.txt", {
+			headers: {
+				host: req.headers.host
+			}
+		}, gotOpts).text();
 		let ind = sitemap.indexOf("Sitemap: ");
 		if (ind == -1) {
 			res.status(200);
@@ -161,7 +182,11 @@ app.get("/", async (req, res) => {
 			return;
 		}
 		sitemap = sitemap.slice(ind);
-		sitemap = await got("http://localhost:" + PORT + sitemap, {}, gotOpts).text();
+		sitemap = await got("http://localhost:" + PORT + sitemap, {
+			headers: {
+				host: req.headers.host
+			}
+		}, gotOpts).text();
 		const lines = sitemap.split("\n");
 		let latest = "";
 		const seenLines = [];
@@ -181,7 +206,11 @@ app.get("/", async (req, res) => {
 				continue;
 			}
 			line = line.slice(ind);
-			const t = await got("http://localhost:" + PORT + line, {}, gotOpts).text();
+			const t = await got("http://localhost:" + PORT + line, {
+				headers: {
+					host: req.headers.host
+				}
+			}, gotOpts).text();
 			const parsed = h5p.parse(t, {
 				setAttributeMap: true
 			});
